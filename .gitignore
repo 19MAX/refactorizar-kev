@@ -2,6 +2,10 @@
 # Operating Specific Junk Files
 #-------------------------
 
+#uploads && events
+uploads
+public/assets/images/events/*
+
 # OS X
 .DS_Store
 .AppleDouble
@@ -104,7 +108,7 @@ _modules/*
 /nbproject/
 /build/
 /nbbuild/
-/dist/
+
 /nbdist/
 /nbactions.xml
 /nb-configuration.xml

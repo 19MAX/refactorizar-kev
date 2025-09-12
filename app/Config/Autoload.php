@@ -88,5 +88,10 @@ class Autoload extends AutoloadConfig
      *
      * @var list<string>
      */
-    public $helpers = [];
+    public $helpers = [
+        'data_options' => 'data_options',
+        'status' => 'status',
+        'form_validation' => 'form_validation',
+        'auth' => 'auth_helper',
+    ];
 }

@@ -29,4 +29,14 @@ class Services extends BaseService
      *     return new \CodeIgniter\Example();
      * }
      */
+    public static function payphone($getShared = true)
+    {
+        if ($getShared) {
+            return static::getSharedInstance('payphone');
+        }
+
+        $payphone = new \App\Services\PayphoneService(getenv('PAYPHONE_API_TOKEN'));
+        return $payphone;
+    }
+
 }
