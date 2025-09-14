@@ -40,6 +40,26 @@ class ClientController extends BaseController
         return view('client/home', $data);
     }
 
+
+    public function landing()
+    {
+        helper('date');
+
+        $flashValidation = session()->getFlashdata('flashValidation');
+        $flashMessages = session()->getFlashdata('flashMessages');
+        $last_data = session()->getFlashdata('last_data');
+        $last_action = session()->getFlashdata('last_action');
+
+
+        $data = [
+            'last_action' => $last_action,
+            'last_data' => $last_data,
+            'validation' => $flashValidation,
+            'flashMessages' => $flashMessages,
+        ];
+        return view('landing/index', $data);
+    }
+
     public function obtenerUsuario()
     {
         $data = $this->request->getJSON();

@@ -172,8 +172,12 @@ $routes->get('respuesta', 'Payphone\PayphoneController::respuesta');
 // $routes->get('respuesta_manual', 'Payphone\PayphoneController::respuesta_manual');
 $routes->get('completado/(:num)/(:segment)', 'Payphone\PayphoneController::completado/$1/$2');
 
+//Landing Page
+$routes->get('/', 'Client\ClientController::landing');
+
+
 //Client
-$routes->get('/', 'Client\ClientController::index');
+$routes->get('inicio', 'Client\ClientController::index');
 $routes->post('obtener_user', 'Client\ClientController::obtenerUsuario');
 $routes->post('validar_cedula', 'Client\InscripcionController::validarCedula', ['filter' => 'csrf']);
 $routes->post('obtener_datos_evento', 'Client\InscripcionController::obtenerDatosEvento');

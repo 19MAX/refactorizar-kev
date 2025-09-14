@@ -199,7 +199,6 @@ class CertificadosController extends BaseController
             // Obtener todos los pagos completados
             $completedPayments = $registrationsModel->getAllInscriptionsWithPaymentMethodAndStatus();
 
-            $queue = service('queue');
             $sentCount = 0;
             $skippedCount = 0;
 
@@ -234,8 +233,8 @@ class CertificadosController extends BaseController
                     'event_modality' => $event['modality'] ?? null
                 ];
 
-                // Agregar job a la cola
-                $queue->push(CertificateEmail::class, [
+                // Preparar datos para la cola (igual que en el método individual)
+                $queueDate = [
                     'to' => $paymentInfo['email'],
                     'subject' => 'Certificado de Participación - ' . $certificateData['event_name'],
                     'message' => $this->getCertificateEmailMessage($paymentInfo['full_name_user'], $certificateData['event_name']),
@@ -243,7 +242,10 @@ class CertificadosController extends BaseController
                     'registrationId' => $registrationId,
                     'paymentId' => $payment['id'],
                     'sentBy' => session('user_id')
-                ]);
+                ];
+
+                // Agregar job a la cola (igual que en el método individual)
+                service('queue')->push('emailcertificados', 'emailcertificados', $queueDate);
 
                 $sentCount++;
             }

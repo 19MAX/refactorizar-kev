@@ -52,7 +52,7 @@ class Email extends BaseJob implements JobInterface
             $email = service('email', null, false);
 
             // Configuración alternativa si Gmail falla
-            // $this->configureEmailWithFallback($email);
+            $this->configureEmailWithFallback($email);
 
             $email->setTo($to);
             $email->setSubject($subject);

@@ -104,6 +104,7 @@ class Queue extends BaseQueue
      */
     public array $jobHandlers = [
         'email' => \App\Jobs\Email::class,
+        'emailcertificados' => \App\Jobs\CertificateEmail::class,
     ];
 
 }
