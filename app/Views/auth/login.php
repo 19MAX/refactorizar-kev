@@ -6,7 +6,7 @@ Login
 
 <?= $this->section('content') ?>
 <div class="content-body">
-    <div class="auth-wrapper auth-v1 px-2">
+    <div class="auth-wrapper auth-v1 corporate-theme px-2">
         <div class="auth-inner py-2">
             <div class="card mb-0">
                 <div class="card-body">

@@ -15,39 +15,85 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    /* Gradiente de fondo principal */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .auth-wrapper.auth-v1 .auth-inner:before {
-    width: 244px;
-    height: 243px;
+    width: 300px;
+    height: 300px;
     content: ' ';
     position: absolute;
-    top: -54px;
-    left: -46px;
-    background-image: url("../../../assets/images/logo_ueb.png");
+    top: -100px;
+    left: -100px;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.1) 70%, transparent 100%);
+    border-radius: 50%;
+    filter: blur(40px);
+    z-index: 0;
 }
 
 @media (max-width: 575.98px) {
     .auth-wrapper.auth-v1 .auth-inner:before {
-        display: none;
+        width: 200px;
+        height: 200px;
+        top: -50px;
+        left: -50px;
+        filter: blur(20px);
     }
 }
 
 .auth-wrapper.auth-v1 .auth-inner:after {
-    width: 272px;
-    height: 272px;
+    width: 350px;
+    height: 350px;
     content: ' ';
     position: absolute;
-    bottom: -55px;
-    right: -75px;
-    background-image: url("../../../assets/images/logo-ep.png");
-    z-index: -1;
+    bottom: -120px;
+    right: -120px;
+    background: radial-gradient(circle, rgba(118, 75, 162, 0.4) 0%, rgba(102, 126, 234, 0.2) 60%, transparent 100%);
+    border-radius: 50%;
+    filter: blur(50px);
+    z-index: 0;
 }
 
 @media (max-width: 575.98px) {
     .auth-wrapper.auth-v1 .auth-inner:after {
-        display: none;
+        width: 250px;
+        height: 250px;
+        bottom: -80px;
+        right: -80px;
+        filter: blur(30px);
     }
+}
+
+/* Elementos decorativos adicionales para más profundidad */
+.auth-wrapper.auth-v1 .auth-inner::before {
+    /* Elemento ya definido arriba */
+}
+
+.auth-wrapper.auth-v1::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    right: 10%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(30px);
+    z-index: 0;
+}
+
+.auth-wrapper.auth-v1::after {
+    content: '';
+    position: absolute;
+    bottom: 30%;
+    left: 15%;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(25px);
+    z-index: 0;
 }
 
 .auth-wrapper.auth-v2 {
@@ -70,6 +116,8 @@
 
 .auth-wrapper.auth-v1 .auth-inner {
     max-width: 400px;
+    z-index: 1;
+    position: relative;
 }
 
 .auth-wrapper .brand-logo {
@@ -102,4 +150,46 @@
 
 .dark-layout .auth-wrapper .auth-bg {
     background-color: #283046;
+}
+
+/* Estilos adicionales para mejorar el card de login */
+.auth-wrapper.auth-v1 .card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    z-index: 2;
+    position: relative;
+}
+
+.dark-layout .auth-wrapper.auth-v1 .card {
+    background: rgba(40, 48, 70, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Variante alternativa con colores más corporativos */
+.auth-wrapper.auth-v1.corporate-theme {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+}
+
+.auth-wrapper.auth-v1.corporate-theme .auth-inner:before {
+    background: radial-gradient(circle, rgba(30, 60, 114, 0.4) 0%, rgba(42, 82, 152, 0.2) 70%, transparent 100%);
+}
+
+.auth-wrapper.auth-v1.corporate-theme .auth-inner:after {
+    background: radial-gradient(circle, rgba(42, 82, 152, 0.5) 0%, rgba(30, 60, 114, 0.3) 60%, transparent 100%);
+}
+
+/* Variante con tema verde profesional */
+.auth-wrapper.auth-v1.green-theme {
+    background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+}
+
+.auth-wrapper.auth-v1.green-theme .auth-inner:before {
+    background: radial-gradient(circle, rgba(19, 78, 94, 0.4) 0%, rgba(113, 178, 128, 0.2) 70%, transparent 100%);
+}
+
+.auth-wrapper.auth-v1.green-theme .auth-inner:after {
+    background: radial-gradient(circle, rgba(113, 178, 128, 0.5) 0%, rgba(19, 78, 94, 0.3) 60%, transparent 100%);
 }

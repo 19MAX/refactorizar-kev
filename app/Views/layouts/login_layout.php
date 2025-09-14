@@ -4,7 +4,7 @@
 <head>
 <style>
     body {
-    background-image: url('<?= base_url("assets/images/logo-ep.png") ?>');
+    /* background-image: url('<?= base_url("assets/images/logo-ep.png") ?>'); */
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain; /* Muestra toda la imagen sin recortar */
