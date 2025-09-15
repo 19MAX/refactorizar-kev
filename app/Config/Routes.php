@@ -53,6 +53,7 @@ $routes->group('admin', static function ($routes) {
     // Nuevas rutas para gestión de certificados automáticos
     $routes->get('certificados/gestionar', 'Admin\CertificadosController::gestionarCertificados');
     $routes->post('certificados/enviar/(:num)', 'Admin\CertificadosController::enviarCertificado/$1');
+    $routes->post('certificados/reenviar-certificado/(:num)', 'Admin\CertificadosController::reenviarCertificado/$1');
     $routes->post('certificados/enviar-masivo', 'Admin\CertificadosController::enviarCertificadosMasivo');
     $routes->get('certificados/historial', 'Admin\CertificadosController::historial');
     $routes->get('certificados/configuracion', 'Admin\CertificadosController::configuracion');

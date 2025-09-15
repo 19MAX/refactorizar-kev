@@ -40,20 +40,27 @@ class ConfigModel extends Model
     public function getCompanyConfig()
     {
         $configs = $this->whereIn('key', [
-            'company_name', 'company_logo', 'primary_color', 'secondary_color'
+            'company_name',
+            'company_logo',
+            'primary_color',
+            'secondary_color',
+            'signature_image', // agregado
+            'sello_image'      // agregado
         ])->findAll();
-        
+
         $result = [
             'company_name' => 'Tu Empresa',
             'company_logo' => '',
-            'primary_color' => '#2563eb',
-            'secondary_color' => '#1e40af'
+            'primary_color' => '#0C244B',
+            'secondary_color' => '#ffc705',
+            'signature_image' => '', // agregado
+            'sello_image' => ''  // agregado
         ];
-        
+
         foreach ($configs as $config) {
             $result[$config['key']] = $config['value'];
         }
-        
+
         return $result;
     }
 
@@ -63,7 +70,7 @@ class ConfigModel extends Model
     public function setConfigValue($key, $value, $description = null)
     {
         $existing = $this->where('key', $key)->first();
-        
+
         if ($existing) {
             return $this->update($existing['id'], [
                 'value' => $value,

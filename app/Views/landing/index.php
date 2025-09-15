@@ -97,7 +97,7 @@
                         <p>Regístrate en los cursos disponibles y comienza a aprender</p>
                         <div class="d-flex">
                             <a href="<?=base_url("inicio")?>" class="btn-get-started text-dark">Registrarse</a>
-                            <a href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
+                            <a href="https://www.youtube.com/watch?v=LyTBGwA1lh4&list=RDLyTBGwA1lh4&start_radio=1"
                                 class="glightbox btn-watch-video d-flex align-items-center"><i
                                     class="bi bi-play-circle"></i><span>Mirar video</span></a>
                         </div>

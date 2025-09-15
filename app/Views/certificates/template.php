@@ -1,138 +1,319 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<style>
-  @page { size: A4 landscape; margin: 0; }
-  html, body { margin:0; padding:0; font-family: Arial, sans-serif; color:#111; }
-  * { box-sizing: border-box; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificado de Participación</title>
+  <style>
+    @page {
+      margin: 0px;
+    }
 
-  .page { width: 297mm; height: 210mm; padding: 6mm; }
-  .card { width: 100%; height: 198mm; border-collapse: collapse; table-layout: fixed;
-          border: 0.7mm solid <?= $config['primary_color'] ?? '#2563eb' ?>; border-radius:6mm; }
-  .frame-cell { border-radius:6mm; overflow:hidden; }
-  .layout { width:100%; height:198mm; border-collapse:collapse; table-layout:fixed; }
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 14px;
+      margin: 0;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      box-sizing: border-box;
+    }
 
-  .row-header { height: 30mm; border-bottom: 0.8mm solid <?= $config['primary_color'] ?? '#2563eb' ?>; }
-  .row-body   { height: 142mm; }  /* ↓ dejamos 6mm extra para firmas */
-  .row-footer { height: 26mm; }
+    .certificate-container {
+      background: white;
+      border: 8px solid
+        <?= $config['primary_color'] ?>
+      ;
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+      margin: 20px;
+    }
 
-  .cell { vertical-align: middle; }
-  .logo-cell{ width:45mm; padding-left:10mm; }
-  .brand-cell{ text-align:center; }
-  .void-cell{ width:45mm; }
-  .logo img{ max-height:16mm; max-width:35mm; }
-  .company{ margin:0; font-weight:700; font-size:18pt; letter-spacing:2px;
-            color:<?= $config['primary_color'] ?? '#2563eb' ?>; text-transform:uppercase; }
-  .subtitle{ margin:2mm 0 0 0; font-size:9pt; color:#666; letter-spacing:1.6px; text-transform:uppercase; }
+    .certificate-container::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      border: 2px solid
+        <?= $config['secondary_color'] ?>
+      ;
+      border-radius: 8px;
+      pointer-events: none;
+    }
 
-  .body-cell{ text-align:center; padding: 0 18mm; }
-  .title{ font-size:30pt; font-weight:800; letter-spacing:6px; color:<?= $config['primary_color'] ?? '#2563eb' ?>; text-transform:uppercase; margin:8mm 0 4mm; }
-  .line{ width:85mm; height:1.2mm; background:<?= $config['primary_color'] ?? '#2563eb' ?>; margin:0 auto 8mm; }
-  .lead{ font-size:12pt; color:#666; margin:0 0 6mm; }
-  .name-box{ display:inline-block; min-width:120mm; padding:6mm 10mm; border:0.9mm solid <?= $config['secondary_color'] ?? '#eab308' ?>;
-             color:<?= $config['secondary_color'] ?? '#eab308' ?>; border-radius:4mm; font-size:20pt; font-weight:700;
-             text-transform:uppercase; margin-bottom:8mm; background:rgba(234,179,8,.08); }
-  .event-lead{ font-size:11pt; color:#666; margin:6mm 0 4mm; }
-  .event-name{ display:inline-block; font-size:14pt; font-weight:700; color:<?= $config['primary_color'] ?? '#2563eb' ?>;
-               border-bottom:0.8mm solid <?= $config['primary_color'] ?? '#2563eb' ?>; padding:0 2mm 2mm; }
-  .details{ margin-top:10mm; }
-  .pill{ display:inline-block; margin:0 4mm 4mm; padding:3mm 6mm; border-radius:3mm; border:0.5mm solid <?= $config['primary_color'] ?? '#2563eb' ?>;
-         font-size:10pt; font-weight:700; }
-  .pill.sec{ border-color:<?= $config['secondary_color'] ?? '#eab308' ?>; color:<?= $config['secondary_color'] ?? '#eab308' ?>; }
+    .certificate-number {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      font-size: 10px;
+      color: white;
+      background:
+        <?= $config['primary_color'] ?>
+      ;
+      padding: 5px 10px;
+      border: 1px solid
+        <?= $config['secondary_color'] ?>
+      ;
+      border-radius: 5px;
+      z-index: 3;
+      font-weight: bold;
+    }
 
-  /* ===== Mini grid 12 columnas (solo ancho porcentual, seguro para Dompdf) ===== */
-  table.grid { width:100%; border-collapse:collapse; table-layout:fixed; }
-  .col-1{width:8.333%}.col-2{width:16.666%}.col-3{width:25%}.col-4{width:33.333%}.col-5{width:41.666%}
-  .col-6{width:50%}.col-7{width:58.333%}.col-8{width:66.666%}.col-9{width:75%}.col-10{width:83.333%}.col-11{width:91.666%}.col-12{width:100%}
-  .gcell{ vertical-align:top; padding: 0 4mm; }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+    }
 
-  /* Footer */
-  .footer-cell{ padding: 0 18mm 6mm; }
-  .issued{ border-top:0.3mm solid #ddd; padding-top:2mm; color:#999; font-size:8.5pt; text-align:center; }
-  .seal{ display:inline-block; border:0.8mm solid <?= $config['primary_color'] ?? '#2563eb' ?>; color:<?= $config['primary_color'] ?? '#2563eb' ?>;
-         font-size:9pt; font-weight:800; text-transform:uppercase; padding:3mm 6mm; border-radius:3mm; background:#fff; }
-  .sig{ border-top:0.3mm solid #bbb; margin-top:6mm; padding-top:1.5mm; font-size:9pt; text-align:center; }
-  .no-break{ page-break-inside:avoid; }
-</style>
+    .logo {
+
+      position: absolute;
+      max-height: 80px;
+      max-width: 200px;
+      top: 20px;
+      left: 30px;
+      /* margin-bottom: 15px; */
+      /* position: relative; */
+      /* z-index: 3; */
+    }
+
+    .company-name {
+      font-size: 24px;
+      font-weight: bold;
+      color:
+        <?= $config['primary_color'] ?>
+      ;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .certificate-title {
+      font-size: 32px;
+      font-weight: bold;
+      color:
+        <?= $config['secondary_color'] ?>
+      ;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .content {
+      text-align: center;
+      /* margin: 40px 0; */
+      position: relative;
+      z-index: 2;
+    }
+
+    .certifies-text {
+      font-size: 16px;
+      color:
+        <?= $config['secondary_color'] ?>
+      ;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .participant-name {
+      font-size: 30px;
+      font-weight: bold;
+      color:
+        <?= $config['primary_color'] ?>
+      ;
+      margin: 20px 0;
+      text-decoration: underline;
+      text-decoration-color:
+        <?= $config['secondary_color'] ?>
+      ;
+      text-underline-offset: 8px;
+      text-decoration-thickness: 3px;
+      text-transform: uppercase;
+    }
+
+    .event-name {
+      font-size: 22px;
+      font-weight: bold;
+      color:
+        <?= $config['secondary_color'] ?>
+      ;
+      margin: 15px 0;
+      font-style: italic;
+    }
+
+    .info-box {
+      background-color: #f8f9fa;
+      border-left: 5px solid
+        <?= $config['primary_color'] ?>
+      ;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 0 10px 10px 0;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table.no-border,
+    .table.no-border th,
+    .table.no-border td {
+      border: none;
+    }
+
+    .info-item {
+      background-color: white;
+      border: 1px solid rgba(<?= hexdec(substr($config['primary_color'], 1, 2)) ?>,
+          <?= hexdec(substr($config['primary_color'], 3, 2)) ?>
+          ,
+          <?= hexdec(substr($config['primary_color'], 5, 2)) ?>
+          , 0.3);
+      padding: 10px 15px;
+      margin: 8px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .info-item strong {
+      color:
+        <?= $config['secondary_color'] ?>
+      ;
+      font-size: 12px;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 60px;
+      position: relative;
+      z-index: 2;
+    }
+
+
+    .item-section {
+      background-color: white;
+      padding: 10px 15px;
+      margin: 8px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .signature-line {
+      border-bottom: 3px solid
+        <?= $config['primary_color'] ?>
+      ;
+      width: 200px;
+      margin: 15px auto 10px auto;
+    }
+
+    .signature-title {
+      color:
+        <?= $config['secondary_color'] ?>
+      ;
+      font-weight: bold;
+      font-size: 12px;
+    }
+  </style>
 </head>
+
 <body>
-<div class="page">
-  <table class="card no-break" role="presentation">
-    <tr><td class="frame-cell">
-      <table class="layout" role="presentation">
-        <!-- HEADER -->
-        <tr class="row-header">
-          <td class="cell logo-cell">
-            <div class="logo">
-              <?php if(!empty($config['company_logo'])): ?>
-                <img src="<?= base_url($config['company_logo']) ?>" alt="Logo">
+  <div class="certificate-container">
+
+    <?php if (isset($config['company_logo']) && file_exists($config['company_logo'])): ?>
+      <img src="<?=base_url($config['company_logo'])?>" alt="Logo" class="logo">
+    <?php endif; ?>
+    <!-- Número de certificado -->
+    <div class="certificate-number">
+      Certificado N°: <?= $certificate_number ?? 'CERT-2025-001' ?><br>
+      Fecha: <?= date('d/m/Y', strtotime($issue_date ?? date('Y-m-d'))) ?>
+    </div>
+
+    <div class="header">
+      <div class="company-name"><?= $config['company_name'] ?? 'Academia del Futuro' ?></div>
+      <div class="certificate-title">Certificado de Participación</div>
+    </div>
+
+    <div class="content">
+      <p class="certifies-text">Se certifica que</p>
+      <div class="participant-name"><?= $participant_name ?? 'Nombre del Participante' ?></div>
+      <p class="certifies-text">ha participado exitosamente en el</p>
+      <div class="event-name"><?= $event_name ?? 'Nombre del Evento' ?></div>
+
+      <div class="info-box">
+        <table class="table no-border">
+          <tr>
+            <td style="width: 25%;">
+              <div class="info-item">
+                <strong>Duración:</strong>
+                <?= $event_duration ?? '0' ?> horas académicas
+              </div>
+            </td>
+            <td style="width: 25%;">
+              <div class="info-item">
+                <strong>Modalidad:</strong>
+                <?= $event_modality ?? 'Virtual' ?>
+              </div>
+            </td>
+            <td style="width: 25%;">
+              <div class="info-item">
+                <strong>Fecha del Evento:</strong>
+                <?= date('d/m/Y', strtotime($event_date ?? date('Y-m-d'))) ?>
+              </div>
+            </td>
+            <td style="width: 25%;">
+              <div class="info-item">
+                <strong>Ciudad:</strong>
+                <?= $city ?? 'Guayaquil' ?>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+
+    <footer>
+
+      <table class="table no-border">
+        <tr>
+          <td style="width: 25%;">
+            <div class="item-section">
+
+              <?php if (isset($config['signature_image']) && file_exists($config['signature_image'])): ?>
+                <img src="<?=base_url( $config['signature_image']) ?>" alt="Firma"
+                  style="max-height: 40px; margin-bottom: 5px;"><br>
               <?php endif; ?>
+              <div class="signature-line"></div>
+              <div class="signature-title">Director Académico</div>
             </div>
           </td>
-          <td class="cell brand-cell">
-            <h1 class="company"><?= $config['company_name'] ?? 'Doctrina Tech' ?></h1>
-            <div class="subtitle">Certificado de participación</div>
-          </td>
-          <td class="cell void-cell"></td>
-        </tr>
-
-        <!-- BODY -->
-        <tr class="row-body">
-          <td colspan="3" class="cell body-cell">
-            <div class="title">CERTIFICADO</div>
-            <div class="line"></div>
-            <div class="lead">Se certifica que</div>
-            <div class="name-box"><?= $user_name ?></div>
-            <div class="event-lead">Ha participado exitosamente en el evento</div>
-            <div class="event-name"><?= $event_name ?></div>
-
-            <div class="details">
-              <?php if(!empty($event_date)): ?>
-                <span class="pill"><strong>FECHA:</strong> <?= date('d/m/Y', strtotime($event_date)) ?></span>
+          <td style="width: 25%;">
+            <div class="item-section">
+              <?php if (isset($config['sello_image']) && file_exists($config['sello_image'])): ?>
+                <img src="<?= base_url($config['sello_image']) ?>" alt="Sello" style="max-height: 40px; margin-bottom: 5px;"><br>
               <?php endif; ?>
-              <?php if(!empty($event_modality)): ?>
-                <span class="pill sec"><strong>MODALIDAD:</strong> <?= ucfirst($event_modality) ?></span>
-              <?php endif; ?>
+              <div class="signature-line"></div>
+              <div class="signature-title">Sello de la Institución</div>
             </div>
-
-            <!-- Ejemplo de fila con “grid” 12 cols: dos firmas + espacio -->
-            <table class="grid" style="margin-top:12mm;" role="presentation">
-              <tr>
-                <td class="gcell col-5">
-                  <div class="sig">_____________________________<br>Responsable Académico</div>
-                </td>
-                <td class="gcell col-2"></td>
-                <td class="gcell col-5">
-                  <div class="sig">_____________________________<br>Dirección</div>
-                </td>
-              </tr>
-            </table>
           </td>
         </tr>
-
-        <!-- FOOTER -->
-        <tr class="row-footer">
-          <td colspan="3" class="cell footer-cell">
-            <table class="grid" role="presentation">
-              <tr>
-                <td class="gcell col-4" style="text-align:left;">
-                  <span class="seal">Certificado Oficial</span>
-                </td>
-                <td class="gcell col-4" style="text-align:center;">
-                  <div class="issued">
-                    <?php setlocale(LC_TIME,'es_ES.UTF-8','es_ES','es'); echo strftime('Emitido el %d de %B de %Y'); ?>
-                  </div>
-                </td>
-                <td class="gcell col-4" style="text-align:right;"></td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
       </table>
-    </td></tr>
-  </table>
-</div>
+      <div class="footer">
+      </div>
+    </footer>
+  </div>
 </body>
+
 </html>

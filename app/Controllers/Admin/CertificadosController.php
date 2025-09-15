@@ -272,9 +272,78 @@ class CertificadosController extends BaseController
         $certificatesSentModel = new CertificatesSentModel();
         $certificates = $certificatesSentModel->getAllSentCertificates();
 
+        $modulo = ModulosAdmin::CERTIFICADOS_HISTORIAL;
+
         return view('admin/certificados/historial', [
-            'certificates' => $certificates
+            'certificates' => $certificates,
+            'modulo' => $modulo
         ]);
+    }
+
+    //Reenviar certificado
+    public function reenviarCertificado($registrationId)
+    {
+        try {
+            $registrationsModel = new RegistrationsModel();
+            $paymentsModel = new PaymentsModel();
+            $eventsModel = new EventsModel();
+
+            // Obtener información del usuario y pago
+            $registration = $registrationsModel->find($registrationId);
+            if (!$registration) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Registro no encontrado'
+                ]);
+            }
+
+            // Verificar que el pago esté completado
+            $payment = $paymentsModel->where('id_register', $registrationId)
+                ->where('payment_status', 2)
+                ->first();
+
+            if (!$payment) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No hay pago completado para este registro'
+                ]);
+            }
+
+            // Obtener información del evento
+            $event = $eventsModel->find($registration['event_cod']);
+
+            // Preparar datos para el certificado
+            $certificateData = [
+                'user_name' => $registration['full_name_user'],
+                'event_name' => $event['event_name'] ?? $registration['event_name'],
+                'event_date' => $event['event_date'] ?? null,
+                'event_modality' => $event['modality'] ?? null,
+                'registration_id' => $registrationId // Agregado para el número de certificado
+            ];
+
+            // Preparar datos para el job de reenvío
+            $jobData = [
+                'to' => $registration['email'],
+                'subject' => 'Certificado de Participación - ' . $certificateData['event_name'],
+                'message' => $this->getCertificateEmailMessage($registration['full_name_user'], $certificateData['event_name']),
+                'certificateData' => $certificateData
+            ];
+
+            // Usar el nuevo job SimpleEmailJob para reenvío
+            service('queue')->push('simpleemail', 'simpleemail', $jobData);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Certificado agregado a la cola de reenvío'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error reenviando certificado: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error interno del servidor'
+            ]);
+        }
     }
 
     /**
@@ -305,7 +374,6 @@ class CertificadosController extends BaseController
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
-
             return redirect()->back()->withInput()->with('errors', $validation->getErrors());
         }
 
@@ -314,22 +382,50 @@ class CertificadosController extends BaseController
             $configModel->setConfigValue('primary_color', $this->request->getPost('primary_color'), 'Color primario de la empresa');
             $configModel->setConfigValue('secondary_color', $this->request->getPost('secondary_color'), 'Color secundario de la empresa');
 
-            // Manejar logo si se subió
+            // Manejar logo
             $logoFile = $this->request->getFile('company_logo');
             if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
+                if (!in_array($logoFile->getClientMimeType(), ['image/jpeg', 'image/png', 'image/gif'])) {
+                    return redirect()->back()->withInput()->with('flashMessages', [['El logo debe ser una imagen válida (JPG, PNG, GIF)', 'danger']]);
+                }
                 $newName = 'logo_' . time() . '.' . $logoFile->getClientExtension();
                 $logoFile->move(ROOTPATH . 'public/uploads/company/', $newName);
                 $configModel->setConfigValue('company_logo', 'uploads/company/' . $newName, 'Logo de la empresa');
             }
 
+            // Manejar firma
+            $signatureFile = $this->request->getFile('signature_image');
+            if ($signatureFile && $signatureFile->isValid() && !$signatureFile->hasMoved()) {
+                if (!in_array($signatureFile->getClientMimeType(), ['image/jpeg', 'image/png', 'image/gif'])) {
+                    return redirect()->back()->withInput()->with('flashMessages', [['La firma debe ser una imagen válida (JPG, PNG, GIF)', 'danger']]);
+                }
+                if (!is_dir(ROOTPATH . 'public/uploads/signatures/')) {
+                    mkdir(ROOTPATH . 'public/uploads/signatures/', 0755, true);
+                }
+                $newName = 'signature_' . time() . '.' . $signatureFile->getClientExtension();
+                $signatureFile->move(ROOTPATH . 'public/uploads/signatures/', $newName);
+                $configModel->setConfigValue('signature_image', 'uploads/signatures/' . $newName, 'Firma del certificado');
+            }
+
+            // Manejar sello
+            $selloFile = $this->request->getFile('sello_image');
+            if ($selloFile && $selloFile->isValid() && !$selloFile->hasMoved()) {
+                if (!in_array($selloFile->getClientMimeType(), ['image/jpeg', 'image/png', 'image/gif'])) {
+                    return redirect()->back()->withInput()->with('flashMessages', [['El sello debe ser una imagen válida (JPG, PNG, GIF)', 'danger']]);
+                }
+                if (!is_dir(ROOTPATH . 'public/uploads/sellos/')) {
+                    mkdir(ROOTPATH . 'public/uploads/sellos/', 0755, true);
+                }
+                $newName = 'sello_' . time() . '.' . $selloFile->getClientExtension();
+                $selloFile->move(ROOTPATH . 'public/uploads/sellos/', $newName);
+                $configModel->setConfigValue('sello_image', 'uploads/sellos/' . $newName, 'Sello del certificado');
+            }
+
             return $this->redirectView(null, [['Configuración guardada correctamente', 'success']], null, null, "admin/certificados/configuracion");
 
         } catch (\Exception $e) {
-            log_message('error', 'Error guardando configuración: ' . $e->getMessage());
-
+            log_message('error', 'Error guardando configuración de certificado: ' . $e->getMessage());
             return $this->redirectView(null, [['Error al guardar la configuración', 'danger']], null, null, 'admin/certificados/configuracion');
-
-            // return redirect()->back()->with('flashMessages', [['Error al guardar la configuración', 'error']]);
         }
     }
 

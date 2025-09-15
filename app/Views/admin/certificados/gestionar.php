@@ -28,9 +28,9 @@ Gestionar Certificados
                             <a href="<?= base_url('admin/certificados/configuracion') ?>" class="btn btn-secondary">
                                 <i class="fa fa-cog"></i> Configuración
                             </a>
-                            <a href="<?= base_url('admin/certificados/historial') ?>" class="btn btn-info">
+                            <!-- <a href="<?= base_url('admin/certificados/historial') ?>" class="btn btn-info">
                                 <i class="fa fa-history"></i> Historial
-                            </a>
+                            </a> -->
                         </div>
                     </div>
                 </div>
@@ -92,7 +92,7 @@ Gestionar Certificados
                                                 <i class="fa fa-envelope"></i> Enviar Certificado
                                             </button>
                                         <?php else: ?>
-                                            <button class="btn btn-secondary btn-sm" disabled>
+                                            <button class="btn btn-success btn-sm" disabled>
                                                 <i class="fa fa-check"></i> Ya Enviado
                                             </button>
                                         <?php endif; ?>

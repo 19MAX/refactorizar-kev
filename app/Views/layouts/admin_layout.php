@@ -297,9 +297,10 @@
                                     alt="User Image"> <span class="hidden-xs"><?= session('first_name') . ' ' . session('last_name') ?></span> </a>
                             <ul class="dropdown-menu">
 
-                                
                                 <li><a href="<?= base_url("admin/config") ?>"><i class="icon-gears"></i>
-                                        Configuración</a></li>
+                                        Configuración Comisión</a></li>
+                                <li><a href="<?= base_url("admin/certificados/configuracion") ?>"><i class="icon-gears"></i>
+                                        Configuración Certificado</a></li>
                                 <li role="separator" class="divider"></li>
                                 <li><a href="<?= base_url("logout") ?>"><i title="Cerrar Sesión"
                                             class="fa fa-power-off"></i>Cerrar Sesión</a>
@@ -405,7 +406,7 @@
                         </ul>
                     </li>
 
-                    <li class="treeview <?= (isset($modulo) && $modulo === 'CERTIFICADOS') ? 'active' : '' ?>">
+                    <li class="treeview <?= (isset($modulo) && in_array($modulo, [ModulosAdmin::CERTIFICADOS,ModulosAdmin::CERTIFICADOS_HISTORIAL])) ? 'active' : '' ?>">
                         <a href="#">
                             <i class="fa fa-certificate"></i>
                             <span>Certificados</span>
@@ -414,9 +415,14 @@
                             </span>
                         </a>
                         <ul class="treeview-menu">
-                            <li>
+                            <li class="<?= (isset($modulo) && checkActiveModule($modulo, ModulosAdmin::CERTIFICADOS)) ? 'active' : '' ?>">
                                 <a href="<?= base_url('admin/certificados/gestionar ') ?>">
                                     <i class="fa fa-list"></i> Ver certificados
+                                </a>
+                            </li>
+                            <li class="<?= (isset($modulo) && checkActiveModule($modulo, ModulosAdmin::CERTIFICADOS_HISTORIAL)) ? 'active' : '' ?>">
+                                <a href="<?= base_url('admin/certificados/historial ') ?>">
+                                    <i class="fa fa-history"></i> Historial enviados
                                 </a>
                             </li>
                         </ul>

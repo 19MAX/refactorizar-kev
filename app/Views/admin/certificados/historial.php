@@ -15,7 +15,7 @@ Historial de Certificados
         </ol>
     </div>
 
-    <div class="container-fluid">
+    <!-- <div class="container-fluid">
         <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -89,7 +89,7 @@ Historial de Certificados
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <div class="content">
         <div class="info-box">
@@ -102,8 +102,8 @@ Historial de Certificados
                             <th>Participante</th>
                             <th>Email</th>
                             <th>Evento</th>
-                            <th>Modalidad</th>
-                            <th>Enviado Por</th>
+                            <!-- <th>Modalidad</th> -->
+                            <!-- <th>Enviado Por</th> -->
                             <th>Archivo</th>
                         </tr>
                     </thead>
@@ -111,7 +111,7 @@ Historial de Certificados
                         <?php foreach ($certificates as $cert): ?>
                             <tr>
                                 <td>
-                                    <span class="badge badge-secondary">
+                                    <span class="badge badge-primary">
                                         <?= date('d/m/Y H:i', strtotime($cert['sent_at'])) ?>
                                     </span>
                                 </td>
@@ -120,28 +120,25 @@ Historial de Certificados
                                     <small><?= esc($cert['user_email']) ?></small>
                                 </td>
                                 <td><?= esc($cert['event_name']) ?></td>
-                                <td>
+                                <!-- <td>
                                     <?php if ($cert['event_modality']): ?>
                                         <span class="badge badge-info"><?= esc($cert['event_modality']) ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
-                                </td>
-                                <td>
+                                </td> -->
+                                <!-- <td>
                                     <?php if ($cert['sent_by_name']): ?>
                                         <?= esc($cert['sent_by_name']) ?>         <?= esc($cert['sent_by_lastname']) ?>
                                     <?php else: ?>
-                                        <span class="text-muted">Sistema</span>
+                                        <span class="text">Sistema</span>
                                     <?php endif; ?>
-                                </td>
+                                </td> -->
                                 <td>
-                                    <?php if ($cert['certificate_path']): ?>
-                                        <small class="text-muted">
-                                            <i class="fa fa-file-pdf"></i> <?= esc($cert['certificate_path']) ?>
-                                        </small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
+                                    <button class="btn btn-primary btn-sm" onclick="enviarCertificado(<?= $cert['registration_id'] ?>)"
+                                        id="btn-<?= $cert['registration_id'] ?>">
+                                        <i class="fa fa-envelope"></i> Reenviar Certificado
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -159,6 +156,60 @@ Historial de Certificados
 <?= $this->section('scripts') ?>
 
 <script>
+    function enviarCertificado(registrationId) {
+        const btn = document.getElementById('btn-' + registrationId);
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
+
+        fetch(`<?= base_url('admin/certificados/reenviar-certificado') ?>/${registrationId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+
+                    // Actualizar la fila
+                    const row = document.getElementById('row-' + registrationId);
+                    const statusCell = row.cells[6];
+                    const actionCell = row.cells[7];
+
+                    statusCell.innerHTML = '<span class="badge badge-success"><i class="fa fa-check-circle"></i> Enviado</span>';
+                    actionCell.innerHTML = '<button class="btn btn-secondary btn-sm" disabled><i class="fa fa-check"></i> Ya Enviado</button>';
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error inesperado',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+            });
+    }
 </script>
 
 <?= $this->endSection() ?>
