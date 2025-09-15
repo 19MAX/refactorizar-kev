@@ -111,11 +111,16 @@ Gestionar Certificados
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-
 <script>
-
     function enviarCertificado(registrationId) {
         const btn = document.getElementById('btn-' + registrationId);
+
+        // Verificar que el botón existe
+        if (!btn) {
+            console.error('Botón no encontrado:', 'btn-' + registrationId);
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
 
@@ -126,8 +131,16 @@ Gestionar Certificados
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-            .then(response => response.json())
+            .then(response => {
+                // Verificar que la respuesta sea válida
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Respuesta del servidor:', data); // Para debug
+
                 if (data.success) {
                     Swal.fire({
                         title: '¡Éxito!',
@@ -136,34 +149,53 @@ Gestionar Certificados
                         confirmButtonText: 'OK'
                     });
 
-                    // Actualizar la fila
-                    const row = document.getElementById('row-' + registrationId);
-                    const statusCell = row.cells[6];
-                    const actionCell = row.cells[7];
+                    // Intentar actualizar la fila solo si existe
+                    try {
+                        const row = document.getElementById('row-' + registrationId);
+                        if (row && row.cells && row.cells.length > 7) {
+                            const statusCell = row.cells[6];
+                            const actionCell = row.cells[7];
 
-                    statusCell.innerHTML = '<span class="badge badge-success"><i class="fa fa-check-circle"></i> Enviado</span>';
-                    actionCell.innerHTML = '<button class="btn btn-secondary btn-sm" disabled><i class="fa fa-check"></i> Ya Enviado</button>';
+                            if (statusCell) {
+                                statusCell.innerHTML = '<span class="badge badge-success"><i class="fa fa-check-circle"></i> Enviado</span>';
+                            }
+                            if (actionCell) {
+                                actionCell.innerHTML = '<button class="btn btn-secondary btn-sm" disabled><i class="fa fa-check"></i> Ya Enviado</button>';
+                            }
+                        } else {
+                            console.warn('No se pudo actualizar la fila. Elemento no encontrado o estructura incorrecta.');
+                            // Simplemente deshabilitar el botón si no se puede actualizar la fila
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fa fa-check"></i> Ya Enviado';
+                        }
+                    } catch (domError) {
+                        console.warn('Error al actualizar DOM:', domError);
+                        // Mantener el botón deshabilitado en caso de error DOM
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fa fa-check"></i> Ya Enviado';
+                    }
+
                 } else {
                     Swal.fire({
                         title: 'Error',
-                        text: data.message,
+                        text: data.message || 'Error desconocido del servidor',
                         icon: 'error',
                         confirmButtonText: 'OK'
                     });
-
+                    // Restaurar botón
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Error completo:', error);
                 Swal.fire({
                     title: 'Error',
-                    text: 'Ocurrió un error inesperado',
+                    text: 'Ocurrió un error de conexión o del servidor',
                     icon: 'error',
                     confirmButtonText: 'OK'
                 });
-
+                // Restaurar botón
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
             });
@@ -182,6 +214,13 @@ Gestionar Certificados
         }).then((result) => {
             if (result.isConfirmed) {
                 const btn = document.getElementById('btnEnviarMasivo');
+
+                // Verificar que el botón existe
+                if (!btn) {
+                    console.error('Botón masivo no encontrado');
+                    return;
+                }
+
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
 
@@ -192,8 +231,16 @@ Gestionar Certificados
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                    .then(response => response.json())
+                    .then(response => {
+                        // Verificar que la respuesta sea válida
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('Respuesta del servidor (masivo):', data); // Para debug
+
                         if (data.success) {
                             Swal.fire({
                                 title: '¡Éxito!',
@@ -207,24 +254,26 @@ Gestionar Certificados
                         } else {
                             Swal.fire({
                                 title: 'Error',
-                                text: data.message,
+                                text: data.message || 'Error desconocido del servidor',
                                 icon: 'error',
                                 confirmButtonText: 'OK'
                             });
-                        }
 
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fa fa-envelope-bulk"></i> Enviar Todos los Certificados';
+                            // Restaurar botón
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa fa-envelope-bulk"></i> Enviar Todos los Certificados';
+                        }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Error completo (masivo):', error);
                         Swal.fire({
                             title: 'Error',
-                            text: 'Ocurrió un error inesperado',
+                            text: 'Ocurrió un error de conexión o del servidor',
                             icon: 'error',
                             confirmButtonText: 'OK'
                         });
 
+                        // Restaurar botón
                         btn.disabled = false;
                         btn.innerHTML = '<i class="fa fa-envelope-bulk"></i> Enviar Todos los Certificados';
                     });
@@ -232,7 +281,6 @@ Gestionar Certificados
         });
     }
 </script>
-
 <!-- Estilos adicionales -->
 <style>
     .card-header {

@@ -156,60 +156,94 @@ Historial de Certificados
 <?= $this->section('scripts') ?>
 
 <script>
-    function enviarCertificado(registrationId) {
-        const btn = document.getElementById('btn-' + registrationId);
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
-
-        fetch(`<?= base_url('admin/certificados/reenviar-certificado') ?>/${registrationId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: '¡Éxito!',
-                        text: data.message,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    });
-
-                    // Actualizar la fila
-                    const row = document.getElementById('row-' + registrationId);
+function enviarCertificado(registrationId) {
+    const btn = document.getElementById('btn-' + registrationId);
+    
+    // Verificar que el botón existe
+    if (!btn) {
+        console.error('Botón no encontrado:', 'btn-' + registrationId);
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando...';
+    
+    fetch(`<?= base_url('admin/certificados/reenviar-certificado') ?>/${registrationId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        // Verificar que la respuesta sea válida
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Respuesta del servidor:', data); // Para debug
+        
+        if (data.success) {
+            Swal.fire({
+                title: '¡Éxito!',
+                text: data.message,
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+            
+            // Intentar actualizar la fila solo si existe
+            try {
+                const row = document.getElementById('row-' + registrationId);
+                if (row && row.cells && row.cells.length > 7) {
                     const statusCell = row.cells[6];
                     const actionCell = row.cells[7];
-
-                    statusCell.innerHTML = '<span class="badge badge-success"><i class="fa fa-check-circle"></i> Enviado</span>';
-                    actionCell.innerHTML = '<button class="btn btn-secondary btn-sm" disabled><i class="fa fa-check"></i> Ya Enviado</button>';
+                    
+                    if (statusCell) {
+                        statusCell.innerHTML = '<span class="badge badge-success"><i class="fa fa-check-circle"></i> Enviado</span>';
+                    }
+                    if (actionCell) {
+                        actionCell.innerHTML = '<button class="btn btn-secondary btn-sm" disabled><i class="fa fa-check"></i> Ya Enviado</button>';
+                    }
                 } else {
-                    Swal.fire({
-                        title: 'Error',
-                        text: data.message,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+                    console.warn('No se pudo actualizar la fila. Elemento no encontrado o estructura incorrecta.');
+                    // Simplemente deshabilitar el botón si no se puede actualizar la fila
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa fa-check"></i> Ya Enviado';
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Ocurrió un error inesperado',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+            } catch (domError) {
+                console.warn('Error al actualizar DOM:', domError);
+                // Mantener el botón deshabilitado en caso de error DOM
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-check"></i> Ya Enviado';
+            }
+            
+        } else {
+            Swal.fire({
+                title: 'Error',
+                text: data.message || 'Error desconocido del servidor',
+                icon: 'error',
+                confirmButtonText: 'OK'
             });
-    }
+            // Restaurar botón
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+        }
+    })
+    .catch(error => {
+        console.error('Error completo:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Ocurrió un error de conexión o del servidor',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        // Restaurar botón
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-envelope"></i> Enviar Certificado';
+    });
+}
 </script>
 
 <?= $this->endSection() ?>
