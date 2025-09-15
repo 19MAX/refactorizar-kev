@@ -6,6 +6,9 @@
 uploads
 public/assets/images/events/*
 
+#Compressed files
+*.zip
+
 # OS X
 .DS_Store
 .AppleDouble
