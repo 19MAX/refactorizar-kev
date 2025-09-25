@@ -22,9 +22,9 @@ Gestionar Certificados
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <button class="btn btn-success" onclick="enviarCertificadosMasivo()" id="btnEnviarMasivo">
+                            <!-- <button class="btn btn-success" onclick="enviarCertificadosMasivo()" id="btnEnviarMasivo">
                                 <i class="fa fa-envelope"></i> Enviar Todos los Certificados
-                            </button>
+                            </button> -->
                             <a href="<?= base_url('admin/certificados/configuracion') ?>" class="btn btn-secondary">
                                 <i class="fa fa-cog"></i> Configuración
                             </a>

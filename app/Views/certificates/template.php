@@ -275,7 +275,7 @@
             <td style="width: 25%;">
               <div class="info-item">
                 <strong>Ciudad:</strong>
-                <?= $city ?? 'Guayaquil' ?>
+                <?= $city ?? 'Guaranda' ?>
               </div>
             </td>
           </tr>

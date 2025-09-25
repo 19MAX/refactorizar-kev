@@ -46,9 +46,9 @@ class SimpleEmailJob extends BaseJob implements JobInterface
             $result = $email->send(false);
 
             // Limpiar archivo temporal
-            if (file_exists($tempPdfPath)) {
-                unlink($tempPdfPath);
-            }
+            // if (file_exists($tempPdfPath)) {
+            //     unlink($tempPdfPath);
+            // }
 
             if (!$result) {
                 $debugInfo = $email->printDebugger(['headers']);
@@ -151,7 +151,7 @@ class SimpleEmailJob extends BaseJob implements JobInterface
             'event_modality' => $certificateData['event_modality'],
             'certificate_number' => 'CERT-' . date('Y') . '-' . str_pad($certificateData['registration_id'] ?? '001', 3, '0', STR_PAD_LEFT),
             'issue_date' => date('Y-m-d'),
-            'city' => 'Guayaquil'
+            'city' => 'Guaranda'
         ]);
 
         $dompdf->loadHtml($html);

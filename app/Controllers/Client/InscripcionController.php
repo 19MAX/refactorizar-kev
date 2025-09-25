@@ -35,10 +35,12 @@ class InscripcionController extends BaseController
     private function calcularFechaLimitePago($fechaInscripcion, $fechaEvento)
     {
         $diasRestantes = $fechaInscripcion->diff($fechaEvento)->days;
-        if ($diasRestantes == 0) return $fechaEvento;
+        if ($diasRestantes == 0)
+            return $fechaEvento;
         $intervalo = $diasRestantes < 7 ? new \DateInterval('P' . $diasRestantes . 'D') : new \DateInterval('P7D');
         $fechaLimitePago = (clone $fechaInscripcion)->add($intervalo);
-        if ($fechaLimitePago > $fechaEvento) $fechaLimitePago = $fechaEvento;
+        if ($fechaLimitePago > $fechaEvento)
+            $fechaLimitePago = $fechaEvento;
         return $fechaLimitePago;
     }
 
@@ -288,44 +290,80 @@ class InscripcionController extends BaseController
             return $this->response->setJSON(['error' => true, 'message' => 'No se pudo registrar la inscripción']);
         }
 
-        // Construye el email job:
-        $emailData = [
-            'to' => $personaData['email'],
-            'subject' => 'Código de pago',
-            'message' => 'Estimado ' . $personaData['name'] . " " . $personaData['surname'] . ', los detalles de su solicitud se encuentran en el documento adjunto. Su código de pago es: ' . $codigoPago,
-            'htmlContent' => view('client/codigo', [
-                'user' => $personaData['name'] . " " . $personaData['surname'],
-                'codigoPago' => $codigoPago,
-                'fechaLimitePago' => $fechaLimitePago->toDateString(),
-                'fechaEmision' => Time::now()->toDateTimeString(),
-                'evento' => $event['event_name'],
-                'categoria' => $event['category_name'],
-                'precio' => $event['cantidad_dinero'],
-            ]),
-            'pdfFilename' => 'comprobante_registro.pdf',
-            'emailType' => 'send_email_registro'
-        ];
+        // Usar el servicio EmailApi para enviar el correo
+        $emailApi = new \App\Services\EmailApi();
 
-        // PUSH CORRECTO A LA COLA (emails)
-        $jobId = service('queue')->push('emails', 'email', $emailData);
+        // Verificar configuración del servicio
+        $configCheck = $emailApi->checkConfiguration();
+        if (!$configCheck['valid']) {
+            $db->transRollback();
+            session()->remove('persona');
+            log_message('error', 'EmailApi: Configuración inválida', $configCheck['config']);
+            return $this->response->setJSON(['error' => true, 'message' => 'Configuración de email incompleta']);
+        }
 
-        if ($jobId) {
+        // Generar el contenido HTML del correo
+        $htmlContent = view('client/codigo', [
+            'user' => $personaData['name'] . " " . $personaData['surname'],
+            'codigoPago' => $codigoPago,
+            'fechaLimitePago' => $fechaLimitePago->toDateString(),
+            'fechaEmision' => Time::now()->toDateTimeString(),
+            'evento' => $event['event_name'],
+            'categoria' => $event['category_name'],
+            'precio' => $event['cantidad_dinero'],
+        ]);
+
+        // Preparar datos del email
+        $emailTo = $personaData['email'];
+        $emailSubject = 'Código de pago - ' . $event['event_name'];
+        $emailMessage = $htmlContent;
+
+        // Enviar el email sin archivos adjuntos
+        $emailResult = $emailApi->sendSimpleEmail($emailTo, $emailSubject, $emailMessage);
+
+        if ($emailResult['status']) {
+            // Email enviado exitosamente
             session()->remove('persona');
             $db->transComplete();
             helper('email');
             $email = mask_email($personaData['email']);
+
+            log_message('info', 'Inscripción completada exitosamente', [
+                'registration_id' => $registration,
+                'payment_code' => $codigoPago,
+                'email_sent' => true
+            ]);
+
             return $this->response->setJSON([
                 'success' => true,
                 'codigoPago' => $codigoPago,
                 'eventName' => $event_name,
                 'email' => $email,
                 'payment_time_limit' => $fechaLimitePago->format('Y-m-d H:i:s'),
-                'job_id' => $jobId,
+                'email_status' => 'sent'
             ]);
         } else {
+            // Error al enviar email - log del error pero no fallar la transacción
+            log_message('error', 'Error enviando email de inscripción', [
+                'registration_id' => $registration,
+                'payment_code' => $codigoPago,
+                'email_error' => $emailResult['message']
+            ]);
+
             session()->remove('persona');
-            $db->transRollback();
-            return $this->response->setJSON(['error' => true, 'message' => 'No se pudo añadir el email a la cola']);
+            $db->transComplete();
+            helper('email');
+            $email = mask_email($personaData['email']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'codigoPago' => $codigoPago,
+                'eventName' => $event_name,
+                'email' => $email,
+                'payment_time_limit' => $fechaLimitePago->format('Y-m-d H:i:s'),
+                'email_status' => 'failed',
+                'email_error' => $emailResult['message']
+            ]);
         }
     }
 

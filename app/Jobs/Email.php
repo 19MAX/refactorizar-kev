@@ -62,9 +62,9 @@ class Email extends BaseJob implements JobInterface
             $result = $email->send(false);
 
             // Limpiar archivo temporal
-            if (file_exists($tempPdfPath)) {
-                unlink($tempPdfPath);
-            }
+            // if (file_exists($tempPdfPath)) {
+            //     unlink($tempPdfPath);
+            // }
 
             if (!$result) {
                 $debugInfo = $email->printDebugger(['headers']);

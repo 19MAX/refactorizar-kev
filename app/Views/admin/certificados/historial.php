@@ -104,7 +104,7 @@ Historial de Certificados
                             <th>Evento</th>
                             <!-- <th>Modalidad</th> -->
                             <!-- <th>Enviado Por</th> -->
-                            <th>Archivo</th>
+                            <!-- <th>Archivo</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -134,12 +134,12 @@ Historial de Certificados
                                         <span class="text">Sistema</span>
                                     <?php endif; ?>
                                 </td> -->
-                                <td>
+                                <!-- <td>
                                     <button class="btn btn-primary btn-sm" onclick="enviarCertificado(<?= $cert['registration_id'] ?>)"
                                         id="btn-<?= $cert['registration_id'] ?>">
                                         <i class="fa fa-envelope"></i> Reenviar Certificado
                                     </button>
-                                </td>
+                                </td> -->
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

@@ -6,6 +6,10 @@ use App\Models\RegistrationsModel;
 use App\Models\PaymentsModel;
 use App\Models\EventsModel;
 use App\Models\CertificatesSentModel;
+use App\Models\ConfigModel;
+use App\Services\EmailApi;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Exception;
 
 class CertificateService
@@ -14,6 +18,8 @@ class CertificateService
     protected $paymentsModel;
     protected $eventsModel;
     protected $certificatesSentModel;
+    protected $configModel;
+    protected $emailApi;
 
     public function __construct()
     {
@@ -21,18 +27,20 @@ class CertificateService
         $this->paymentsModel = new PaymentsModel();
         $this->eventsModel = new EventsModel();
         $this->certificatesSentModel = new CertificatesSentModel();
+        $this->configModel = new ConfigModel();
+        $this->emailApi = new EmailApi();
     }
 
-    /**
-     * Enviar certificado individual a la cola
-     */
-    public function sendCertificateToQueue($registrationId)
+    public function sendCertificate($registrationId, $sentBy = null, $certificateData = [])
     {
         try {
             // Obtener información del usuario y pago
             $registration = $this->registrationsModel->find($registrationId);
             if (!$registration) {
-                return ['success' => false, 'message' => 'Registro no encontrado'];
+                return [
+                    'success' => false,
+                    'message' => 'Registro no encontrado'
+                ];
             }
 
             // Verificar que el pago esté completado
@@ -41,184 +49,299 @@ class CertificateService
                 ->first();
 
             if (!$payment) {
-                return ['success' => false, 'message' => 'No hay pago completado para este registro'];
+                return [
+                    'success' => false,
+                    'message' => 'No hay pago completado para este registro'
+                ];
             }
 
             // Verificar si ya se envió el certificado
-            if ($this->certificatesSentModel->isCertificateSent($registrationId, $payment['id'])) {
-                return ['success' => false, 'message' => 'El certificado ya fue enviado anteriormente'];
-            }
+            // if ($this->certificatesSentModel->isCertificateSent($registrationId, $payment['id'])) {
+            //     return [
+            //         'success' => false,
+            //         'message' => 'El certificado ya fue enviado anteriormente'
+            //     ];
+            // }
 
             // Obtener información del evento
-            $event = $this->eventsModel->find($registration['event_cod']);
+            // $event = $this->eventsModel->find($registration['event_cod']);
 
             // Preparar datos para el certificado
-            $certificateData = [
-                'user_name' => $registration['full_name_user'],
-                'event_name' => $event['event_name'] ?? $registration['event_name'],
-                'event_date' => $event['event_date'] ?? null,
-                'event_modality' => $event['modality'] ?? null,
-                'registration_id' => $registrationId,
-                'payment_id' => $payment['id'],
-                'user_email' => $registration['email']
-            ];
+            // $certificateData = [
+            //     'user_name' => $registration['full_name_user'],
+            //     'event_name' => $event['event_name'] ?? $registration['event_name'],
+            //     'event_date' => $event['event_date'] ?? null,
+            //     'event_modality' => $event['modality'] ?? null,
+            //     'registration_id' => $registrationId,
+            //     'payment_id' => $payment['id']
+            // ];
 
-            // Datos para correo de tipo certificado
-            $emailDataCertificate = [
-                'to' => $registration['email'],
-                'subject' => 'Certificado de Participación - ' . $certificateData['event_name'],
-                'message' => "mensaje",
-                'htmlContent' => '', // El contenido HTML puede estar vacío si no es necesario
-                'pdfFilename' => 'certificado_' . str_replace(' ', '_', $certificateData['user_name']) . '_' . date('Y-m-d') . '.pdf',
-                'emailType' => 'send_email_certificate',
-                'certificateData' => $certificateData,
-                'sentBy' => session('user_id')
-            ];
+            // Generar y enviar certificado
+            $emailResult = $this->generateAndSendCertificate($certificateData, $registration['email'], $sentBy);
 
-            // Añadir el trabajo a la cola para certificado
-            service('queue')->push('emails', 'email', $emailDataCertificate);
+            if ($emailResult['success']) {
+                log_message('info', 'Certificado enviado exitosamente', [
+                    'registration_id' => $registrationId,
+                    'email' => $registration['email']
+                ]);
 
-            return ['success' => true, 'message' => 'Certificado agregado a la cola de envío'];
+                return [
+                    'success' => true,
+                    'message' => 'Certificado enviado correctamente'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Error al enviar certificado: ' . $emailResult['message']
+                ];
+            }
 
         } catch (Exception $e) {
             log_message('error', 'Error enviando certificado: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Error interno del servidor: ' . $e->getMessage()];
+            return [
+                'success' => false,
+                'message' => 'Error interno del servidor: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    protected function generateAndSendCertificate($certificateData, $userEmail, $sentBy = null)
+    {
+        // Obtener configuración de la empresa
+        $companyConfig = $this->configModel->getCompanyConfig();
+        try {
+
+            // Generar el PDF del certificado usando la misma lógica del job
+            $pdfOutput = $this->generateCertificatePdf($certificateData, $companyConfig);
+
+            if (!$pdfOutput) {
+                return [
+                    'success' => false,
+                    'message' => 'Error al generar el PDF del certificado'
+                ];
+            }
+
+            // Guardar el PDF en el sistema
+            $pdfInfo = $this->saveCertificateToSystem($pdfOutput, $certificateData);
+            if (!$pdfInfo) {
+                return [
+                    'success' => false,
+                    'message' => 'Error al guardar certificado en el sistema'
+                ];
+            }
+
+            // Preparar datos para el email
+            $subject = 'Certificado de Participación - ' . $certificateData['event_name'];
+            $message = $this->buildCertificateEmailMessage($certificateData);
+
+            $attachments = [$pdfInfo['path']]; // Enviar la ruta física del archivo
+
+            log_message('debug', 'Preparando envío de certificado', [
+                'archivo_fisico' => $pdfInfo['path'],
+                'destinatario' => $userEmail,
+                'evento' => $certificateData['event_name']
+            ]);
+
+            // Enviar email usando EmailApi
+            $emailResult = $this->emailApi->sendEmail($subject, $message, $attachments, $userEmail);
+
+            if ($emailResult['status']) {
+                // Registrar el certificado como enviado usando la misma estructura del job
+                $this->certificatesSentModel->recordSentCertificate([
+                    'registration_id' => $certificateData['registration_id'],
+                    'payment_id' => $certificateData['payment_id'],
+                    'user_name' => $certificateData['user_name'],
+                    'user_email' => $userEmail,
+                    'event_name' => $certificateData['event_name'],
+                    'event_date' => $certificateData['event_date'],
+                    'event_modality' => $certificateData['event_modality'],
+                    'certificate_path' => $pdfInfo['filename'],
+                    'sent_by' => $sentBy ?? session('user_id')
+                ]);
+
+                log_message('info', 'Certificado enviado exitosamente a: ' . $userEmail);
+                return [
+                    'success' => true,
+                    'message' => 'Certificado enviado correctamente',
+                    'pdf_path' => $pdfInfo['url']
+                ];
+            } else {
+                log_message('error', 'Error al enviar certificado: ' . $emailResult['message']);
+                return [
+                    'success' => false,
+                    'message' => 'Error al enviar email: ' . $emailResult['message']
+                ];
+            }
+
+        } catch (Exception $e) {
+            log_message('error', 'Error en generateAndSendCertificate: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage()
+            ];
         }
     }
 
     /**
-     * Enviar certificados masivos a la cola
+     * Generar PDF del certificado usando la misma lógica del job
      */
-    public function sendBulkCertificatesToQueue($eventId = null, $filters = [])
+    protected function generateCertificatePdf($certificateData, $companyConfig = [])
     {
         try {
-            $sentCount = 0;
-            $errorCount = 0;
-            $alreadySentCount = 0;
+            // Obtener configuración de la empresa
+            // $companyConfig = $this->configModel->getCompanyConfig();
 
-            // Obtener registraciones con pagos completados
-            $query = $this->registrationsModel
-                ->select('registrations.*, payments.id as payment_id')
-                ->join('payments', 'payments.id_register = registrations.id')
-                ->where('payments.payment_status', 2);
+            // Configurar opciones de Dompdf para certificados (igual que el job)
+            $options = new Options();
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('isRemoteEnabled', true);
+            $options->set('defaultFont', 'DejaVu Sans');
+            // $options->set('enable_font_subsetting', true);
+            // $options->set('isPhpEnabled', true);
 
-            if ($eventId) {
-                $query->where('registrations.event_cod', $eventId);
+            $dompdf = new Dompdf($options);
+
+            // Generar HTML del certificado usando la plantilla existente
+            $html = view('certificates/template', [
+                'config' => $companyConfig,
+                'participant_name' => $certificateData['user_name'],
+                'event_name' => $certificateData['event_name'],
+                'event_date' => $certificateData['event_date'],
+                'event_modality' => $certificateData['event_modality'],
+                'certificate_number' => 'CERT-' . date('Y') . '-' . str_pad($certificateData['registration_id'] ?? '001', 3, '0', STR_PAD_LEFT),
+                'issue_date' => date('Y-m-d'),
+                'city' => 'Guaranda'
+            ]);
+
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'landscape');
+            $dompdf->render();
+
+            return $dompdf->output();
+
+        } catch (Exception $e) {
+            log_message('error', 'Error generando PDF del certificado: ' . $e->getMessage());
+            throw new Exception('Error generando PDF del certificado: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Guardar certificado en el sistema
+     */
+    protected function saveCertificateToSystem($pdfOutput, $certificateData)
+    {
+        try {
+            // Crear directorio para certificados si no existe
+            $uploadsDir = FCPATH . 'uploads/certificados/';
+            if (!is_dir($uploadsDir)) {
+                mkdir($uploadsDir, 0755, true);
             }
 
-            // Aplicar filtros adicionales si existen
-            if (!empty($filters['date_from'])) {
-                $query->where('registrations.created_at >=', $filters['date_from']);
-            }
-            if (!empty($filters['date_to'])) {
-                $query->where('registrations.created_at <=', $filters['date_to']);
-            }
+            // Usar la misma estructura de nombres del job
+            $pdfFilename = 'certificado_' . $certificateData['registration_id'] . '_' . date('Y-m-d') . '.pdf';
 
-            $registrations = $query->findAll();
 
-            foreach ($registrations as $registration) {
-                // Verificar si ya se envió el certificado
-                if ($this->certificatesSentModel->isCertificateSent($registration['id'], $registration['payment_id'])) {
-                    $alreadySentCount++;
-                    continue;
-                }
+            // Ruta completa del archivo
+            $filePath = $uploadsDir . $pdfFilename;
 
-                $result = $this->sendCertificateToQueue($registration['id']);
+            // Guardar archivo
+            if (file_put_contents($filePath, $pdfOutput) !== false) {
+                log_message('info', 'Certificado PDF guardado exitosamente: ' . $filePath);
 
-                if ($result['success']) {
-                    $sentCount++;
+                // Verificar que el archivo se creó correctamente
+                if (file_exists($filePath)) {
+                    $fileSize = filesize($filePath);
+                    log_message('info', 'Certificado verificado - tamaño: ' . $fileSize . ' bytes');
+
+                    // Retornar información del archivo
+                    $fileUrl = base_url('uploads/certificados/' . $pdfFilename);
+
+                    return [
+                        'path' => $filePath,      // Ruta física del archivo
+                        'url' => $fileUrl,        // URL accesible del archivo
+                        'filename' => $pdfFilename // Solo el nombre del archivo
+                    ];
                 } else {
-                    $errorCount++;
-                    log_message('error', "Error enviando certificado para registro {$registration['id']}: " . $result['message']);
+                    log_message('error', 'Certificado no existe después de guardarlo: ' . $filePath);
+                    return false;
                 }
             }
 
-            return [
-                'success' => true,
-                'message' => "Proceso completado. Enviados: {$sentCount}, Ya enviados: {$alreadySentCount}, Errores: {$errorCount}",
-                'stats' => [
-                    'sent' => $sentCount,
-                    'already_sent' => $alreadySentCount,
-                    'errors' => $errorCount,
-                    'total' => count($registrations)
-                ]
-            ];
+            log_message('error', 'No se pudo escribir el certificado: ' . $filePath);
+            return false;
 
         } catch (Exception $e) {
-            log_message('error', 'Error en envío masivo de certificados: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Error interno del servidor: ' . $e->getMessage()];
+            log_message('error', 'Error guardando certificado PDF: ' . $e->getMessage());
+            return false;
         }
     }
 
     /**
-     * Obtener mensaje del email para certificado
+     * Mensaje HTML del email usando el mismo formato del job getCertificateEmailMessage
      */
-    private function getCertificateEmailMessage($userName, $eventName)
+    protected function buildCertificateEmailMessage($certificateData)
     {
-        return "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <h2 style='color: #333;'>¡Felicitaciones {$userName}!</h2>
-            
-            <p>Nos complace adjuntar su certificado de participación en el evento:</p>
-            
-            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;'>
-                <h3 style='color: #007bff; margin: 0;'>{$eventName}</h3>
+        $message = "
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Certificado de Participación</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .header { background-color: #f4f4f4; padding: 20px; text-align: center; }
+                .content { padding: 20px; }
+                .details { background-color: #f9f9f9; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }
+                .details ul { list-style: none; padding: 0; }
+                .details li { padding: 5px 0; }
+                .details strong { color: #28a745; }
+                .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                .congratulations { background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 15px; margin: 20px 0; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <h2>Certificado de Participación</h2>
             </div>
-            
-            <p>Su certificado ha sido generado automáticamente y está adjunto a este correo electrónico.</p>
-            
-            <p style='margin-top: 30px;'>
-                Gracias por su participación.<br>
-                <strong>Equipo Organizador</strong>
-            </p>
-            
-            <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;'>
-            <p style='font-size: 12px; color: #666;'>
-                Este es un correo automático, por favor no responda a este mensaje.
-            </p>
-        </div>";
+            <div class='content'>
+                <div class='congratulations'>
+                    <h3>¡Felicitaciones {$certificateData['user_name']}!</h3>
+                    <p>Has completado exitosamente tu participación en el evento.</p>
+                </div>
+            </div>
+            <div class='footer'>
+                <p>Este es un mensaje automático, por favor no responda a este correo.</p>
+                <p>Si tiene alguna consulta sobre su certificado, póngase en contacto con nuestro equipo de soporte.</p>
+            </div>
+        </body>
+        </html>";
+
+        return $message;
     }
 
     /**
-     * Obtener estadísticas de certificados enviados
+     * Método para limpiar certificados antiguos
      */
-    public function getCertificateStats($eventId = null)
+    public function cleanOldCertificates($daysOld = 90)
     {
-        try {
-            $query = $this->certificatesSentModel->select('COUNT(*) as total_sent');
-
-            if ($eventId) {
-                $query->where('event_id', $eventId);
-            }
-
-            $totalSent = $query->first()['total_sent'] ?? 0;
-
-            // Obtener total de registraciones con pago completado
-            $totalQuery = $this->registrationsModel
-                ->select('COUNT(*) as total')
-                ->join('payments', 'payments.id_register = registrations.id')
-                ->where('payments.payment_status', 2);
-
-            if ($eventId) {
-                $totalQuery->where('registrations.event_cod', $eventId);
-            }
-
-            $totalEligible = $totalQuery->first()['total'] ?? 0;
-            $pending = $totalEligible - $totalSent;
-
-            return [
-                'success' => true,
-                'stats' => [
-                    'total_eligible' => $totalEligible,
-                    'total_sent' => $totalSent,
-                    'pending' => $pending,
-                    'percentage_sent' => $totalEligible > 0 ? round(($totalSent / $totalEligible) * 100, 2) : 0
-                ]
-            ];
-
-        } catch (Exception $e) {
-            log_message('error', 'Error obteniendo estadísticas de certificados: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Error obteniendo estadísticas'];
+        $uploadsDir = FCPATH . 'uploads/certificados/';
+        if (!is_dir($uploadsDir)) {
+            return false;
         }
+
+        $files = glob($uploadsDir . '*.pdf');
+        $cutoffTime = time() - ($daysOld * 24 * 60 * 60);
+        $deletedCount = 0;
+
+        foreach ($files as $file) {
+            if (filemtime($file) < $cutoffTime) {
+                if (unlink($file)) {
+                    $deletedCount++;
+                    log_message('info', 'Certificado antiguo eliminado: ' . $file);
+                }
+            }
+        }
+
+        log_message('info', "Limpieza de certificados completada. {$deletedCount} archivos eliminados.");
+        return $deletedCount;
     }
 }

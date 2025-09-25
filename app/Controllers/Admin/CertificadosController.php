@@ -9,6 +9,7 @@ use App\Models\PaymentsModel;
 use App\Models\EventsModel;
 use App\Models\CertificatesSentModel;
 use App\Models\ConfigModel;
+use App\Services\CertificateService;
 use CodeIgniter\Queue\Queue;
 use App\Jobs\CertificateEmail;
 use ModulosAdmin;
@@ -16,6 +17,14 @@ use PaymentStatus;
 
 class CertificadosController extends BaseController
 {
+
+    private $certificateService;
+    public function __construct()
+    {
+        // Cargar el servicio de certificados
+        $this->certificateService = new CertificateService();
+    }
+
     private function redirectView($validation = null, $flashMessages = null, $last_data = null, $last_action = null, $route = null)
     {
         return redirect()->to($route)->
@@ -150,31 +159,49 @@ class CertificadosController extends BaseController
                 'user_name' => $registration['full_name_user'],
                 'event_name' => $event['event_name'] ?? $registration['event_name'],
                 'event_date' => $event['event_date'] ?? null,
-                'event_modality' => $event['modality'] ?? null
+                'event_modality' => $event['modality'] ?? null,
+                'registration_id' => $registrationId,
+                'payment_id' => $payment['id']
             ];
 
 
-
+            // $certificateData = [
+            //     'user_name' => $registration['full_name_user'],
+            //     'event_name' => $event['event_name'] ?? $registration['event_name'],
+            //     'event_date' => $event['event_date'] ?? null,
+            //     'event_modality' => $event['modality'] ?? null,
+            //     // 'registration_id' => $registrationId,
+            //     // 'payment_id' => $payment['id']
+            // ];
             // Agregar job a la cola
             // $queue = service('queue');
-            $queueDate = [
-                'to' => $registration['email'],
-                'subject' => 'Certificado de Participación - ' . $certificateData['event_name'],
-                'message' => $this->getCertificateEmailMessage($registration['full_name_user'], $certificateData['event_name']),
-                'certificateData' => $certificateData,
-                'registrationId' => $registrationId,
-                'paymentId' => $payment['id'],
-                'sentBy' => session('user_id')
-            ];
-            // Añadir el trabajo a la cola para factura
-            service('queue')->push('emailcertificados', 'emailcertificados', $queueDate);
+            // $queueDate = [
+            //     'to' => $registration['email'],
+            //     'subject' => 'Certificado de Participación - ' . $certificateData['event_name'],
+            //     'message' => $this->getCertificateEmailMessage($registration['full_name_user'], $certificateData['event_name']),
+            //     'certificateData' => $certificateData,
+            //     'registrationId' => $registrationId,
+            //     'paymentId' => $payment['id'],
+            //     'sentBy' => session('user_id')
+            // ];
 
-            // service('queue')->push('emailcerficados', 'emailcerficados', $queueDate);
+            // Usar el servicio de certificados
+            $result = $this->certificateService->sendCertificate($registrationId, session('id'),$certificateData);
 
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Certificado agregado a la cola de envío'
-            ]);
+            // Verificar el resultado del servicio
+            if ($result['success']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Certificado enviado exitosamente'
+                ]);
+            } else {
+
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Error del servicio de certificados: ' . $result['message']
+                ]);
+            }
+
 
         } catch (\Exception $e) {
             log_message('error', 'Error enviando certificado: ' . $e->getMessage());
